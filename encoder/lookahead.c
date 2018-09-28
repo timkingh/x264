@@ -146,25 +146,29 @@ int x264_lookahead_init( x264_t *h, int i_slicetype_length )
         x264_sync_frame_list_init( &look->ofbuf, h->frames.i_delay+3 ) )
         goto fail;
 
-    if( !h->param.i_sync_lookahead )
-        return 0;
+	if (!h->param.i_sync_lookahead)
+	{
+		return 0;
+	}
+	else
+	{
+		x264_t *look_h = h->thread[h->param.i_threads];
+		*look_h = *h;
+		if (x264_macroblock_cache_allocate(look_h))
+			goto fail;
 
-    x264_t *look_h = h->thread[h->param.i_threads];
-    *look_h = *h;
-    if( x264_macroblock_cache_allocate( look_h ) )
-        goto fail;
+		if (x264_macroblock_thread_allocate(look_h, 1) < 0)
+			goto fail;
 
-    if( x264_macroblock_thread_allocate( look_h, 1 ) < 0 )
-        goto fail;
+		if (x264_pthread_create(&look->thread_handle, NULL, (void*)lookahead_thread, look_h))
+			goto fail;
+		look->b_thread_active = 1;
 
-    if( x264_pthread_create( &look->thread_handle, NULL, (void*)lookahead_thread, look_h ) )
-        goto fail;
-    look->b_thread_active = 1;
-
-    return 0;
-fail:
-    x264_free( look );
-    return -1;
+		return 0;
+	fail:
+		x264_free(look);
+		return -1;
+	}
 }
 
 void x264_lookahead_delete( x264_t *h )

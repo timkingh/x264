@@ -242,7 +242,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>.\build</OutDir>
+    <OutDir>..\..\..\msvc\</OutDir>
     <IntDir>$(SolutionDir)obj\$(Configuration)\$(Platform)\$(ProjectName)\</IntDir>
     <TargetName>x264clid</TargetName>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
@@ -258,7 +258,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IntDir>$(SolutionDir)obj\$(Configuration)\$(Platform)\$(ProjectName)\</IntDir>
     <TargetName>x264clid</TargetName>
-    <OutDir>.\build</OutDir>
+    <OutDir>..\..\..\msvc\</OutDir>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
     <LocalDebuggerWorkingDirectory>$(OutDir)\bin\x64\</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
@@ -286,7 +286,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IntDir>$(SolutionDir)obj\$(Configuration)\$(Platform)\$(ProjectName)\</IntDir>
     <TargetName>x264cli</TargetName>
-    <OutDir>.\build</OutDir>
+    <OutDir>..\..\..\msvc\</OutDir>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
     <LocalDebuggerWorkingDirectory>$(OutDir)\bin\x64\</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
@@ -309,7 +309,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)\bin\x86\$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>$(SolutionDir)obj\$(Platform)\;$(OutDir)\lib\x86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libx264d.lib;x264cli_10bd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
@@ -447,13 +447,10 @@ del /f /q $(OutDir)\licenses\x264.txt
       <AdditionalIncludeDirectories>.\;..\;..\extras\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <C99Support>true</C99Support>
       <MinimalRebuild>false</MinimalRebuild>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <OmitFramePointers>false</OmitFramePointers>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)\bin\x64\$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>$(SolutionDir)obj\$(Platform)\;$(OutDir)\lib\x64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libx264d.lib;x264cli_10bd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
@@ -753,7 +750,7 @@ del /f /q $(OutDir)\licenses\x264.txt
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)\bin\x64\$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>$(SolutionDir)obj\$(Platform)\;$(OutDir)\lib\x64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libx264.lib;x264cli_10b.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>

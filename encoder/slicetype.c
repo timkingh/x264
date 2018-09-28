@@ -1357,10 +1357,11 @@ static void slicetype_path( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fra
 
         if( possible || !best_possible )
         {
+			uint64_t cost;
             if( possible && !best_possible )
                 best_cost = COST_MAX64;
             /* Calculate the actual cost of the current path */
-            uint64_t cost = slicetype_path_cost( h, a, frames, paths[idx], best_cost );
+            cost = slicetype_path_cost( h, a, frames, paths[idx], best_cost );
             if( cost < best_cost )
             {
                 best_cost = cost;

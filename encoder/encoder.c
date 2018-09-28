@@ -1456,7 +1456,8 @@ x264_t *x264_encoder_open( x264_param_t *param )
     x264_t *h;
     char buf[1000], *p;
     int i_slicetype_length;
-
+	/* Must be volatile or else GCC will optimize it out. */
+	volatile int temp = 392;
     CHECKED_MALLOCZERO( h, sizeof(x264_t) );
 
     /* Create a copy of param */
@@ -1638,8 +1639,6 @@ x264_t *x264_encoder_open( x264_param_t *param )
     if( x264_analyse_init_costs( h ) )
         goto fail;
 
-    /* Must be volatile or else GCC will optimize it out. */
-    volatile int temp = 392;
     if( x264_clz( temp ) != 23 )
     {
         x264_log( h, X264_LOG_ERROR, "CLZ test failed: x264 has been miscompiled!\n" );
@@ -1948,12 +1947,13 @@ static int check_encapsulated_buffer( x264_t *h, x264_t *h0, int start,
     {
         necessary_size *= 2;
         uint8_t *buf = x264_malloc( necessary_size );
+		intptr_t delta;
         if( !buf )
             return -1;
         if( previous_nal_size )
             memcpy( buf, h0->nal_buffer, previous_nal_size );
 
-        intptr_t delta = buf - h0->nal_buffer;
+        delta = buf - h0->nal_buffer;
         for( int i = 0; i < start; i++ )
             h->out.nal[i].p_payload += delta;
 
@@ -1985,12 +1985,13 @@ static int encoder_encapsulate_nals( x264_t *h, int start )
 
     /* Worst-case NAL unit escaping: reallocate the buffer if it's too small. */
     int necessary_size = previous_nal_size + nal_size * 3/2 + h->out.i_nal * 4 + 4 + 64;
+	uint8_t *nal_buffer;
     for( int i = start; i < h->out.i_nal; i++ )
         necessary_size += h->out.nal[i].i_padding;
     if( check_encapsulated_buffer( h, h0, start, previous_nal_size, necessary_size ) )
         return -1;
 
-    uint8_t *nal_buffer = h0->nal_buffer + previous_nal_size;
+    nal_buffer = h0->nal_buffer + previous_nal_size;
 
     for( int i = start; i < h->out.i_nal; i++ )
     {
@@ -2823,11 +2824,12 @@ reencode:
 
         if( slice_max_size && (!SLICE_MBAFF || (i_mb_y&1)) )
         {
+			uint8_t *end;
             /* Count the skip run, just in case. */
             if( !h->param.b_cabac )
                 total_bits += bs_size_ue_big( i_skip );
             /* Check for escape bytes. */
-            uint8_t *end = h->param.b_cabac ? h->cabac.p : h->out.bs.p;
+            end = h->param.b_cabac ? h->cabac.p : h->out.bs.p;
             for( ; last_emu_check < end - 2; last_emu_check++ )
                 if( last_emu_check[0] == 0 && last_emu_check[1] == 0 && last_emu_check[2] <= 3 )
                 {
@@ -3878,10 +3880,11 @@ static int encoder_frame_end( x264_t *h, x264_t *thread_current,
      * We don't know the size of the last slice until encapsulation so we add filler to the encapsulated NAL */
     if( h->param.i_avcintra_class )
     {
+		x264_nal_t *nal;
         if( check_encapsulated_buffer( h, h->thread[0], h->out.i_nal, frame_size, frame_size + filler ) < 0 )
             return -1;
 
-        x264_nal_t *nal = &h->out.nal[h->out.i_nal-1];
+        nal = &h->out.nal[h->out.i_nal-1];
         memset( nal->p_payload + nal->i_payload, 0, filler );
         nal->i_payload += filler;
         nal->i_padding = filler;

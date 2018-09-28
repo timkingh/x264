@@ -54,31 +54,36 @@ static int init( hnd_t *handle, cli_vid_filter_t *filter, video_info_t *info, x2
 {
     intptr_t size = (intptr_t)opt_string;
     /* upon a <= 0 cache request, do nothing */
-    if( size <= 0 )
-        return 0;
-    cache_hnd_t *h = calloc( 1, sizeof(cache_hnd_t) );
-    if( !h )
-        return -1;
+	if (size <= 0)
+	{
+		return 0;
+	}
+	else
+	{
+		cache_hnd_t *h = calloc(1, sizeof(cache_hnd_t));
+		if (!h)
+			return -1;
 
-    h->max_size = size;
-    h->cache = malloc( (h->max_size+1) * sizeof(cli_pic_t*) );
-    if( !h->cache )
-        return -1;
+		h->max_size = size;
+		h->cache = malloc((h->max_size + 1) * sizeof(cli_pic_t*));
+		if (!h->cache)
+			return -1;
 
-    for( int i = 0; i < h->max_size; i++ )
-    {
-        h->cache[i] = malloc( sizeof(cli_pic_t) );
-        if( !h->cache[i] || x264_cli_pic_alloc( h->cache[i], info->csp, info->width, info->height ) )
-            return -1;
-    }
-    h->cache[h->max_size] = NULL; /* require null terminator for list methods */
+		for (int i = 0; i < h->max_size; i++)
+		{
+			h->cache[i] = malloc(sizeof(cli_pic_t));
+			if (!h->cache[i] || x264_cli_pic_alloc(h->cache[i], info->csp, info->width, info->height))
+				return -1;
+		}
+		h->cache[h->max_size] = NULL; /* require null terminator for list methods */
 
-    h->prev_filter = *filter;
-    h->prev_hnd = *handle;
-    *handle = h;
-    *filter = cache_filter;
+		h->prev_filter = *filter;
+		h->prev_hnd = *handle;
+		*handle = h;
+		*filter = cache_filter;
 
-    return 0;
+		return 0;
+	}
 }
 
 static void fill_cache( cache_hnd_t *h, int frame )

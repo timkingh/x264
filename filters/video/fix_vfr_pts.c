@@ -51,19 +51,24 @@ cli_vid_filter_t fix_vfr_pts_filter;
 static int init( hnd_t *handle, cli_vid_filter_t *filter, video_info_t *info, x264_param_t *param, char *opt_string )
 {
     /* if the input is not vfr, we don't do anything */
-    if( !info->vfr )
-        return 0;
-    fix_vfr_pts_hnd_t *h = calloc( 1, sizeof(fix_vfr_pts_hnd_t) );
-    if( !h )
-        return -1;
+	if (!info->vfr)
+	{
+		return 0;
+	}
+	else
+	{
+		fix_vfr_pts_hnd_t *h = calloc(1, sizeof(fix_vfr_pts_hnd_t));
+		if (!h)
+			return -1;
 
-    h->holder_frame = -1;
-    h->prev_hnd = *handle;
-    h->prev_filter = *filter;
-    *handle = h;
-    *filter = fix_vfr_pts_filter;
+		h->holder_frame = -1;
+		h->prev_hnd = *handle;
+		h->prev_filter = *filter;
+		*handle = h;
+		*filter = fix_vfr_pts_filter;
 
-    return 0;
+		return 0;
+	}
 }
 
 static int get_frame( hnd_t handle, cli_pic_t *output, int frame )

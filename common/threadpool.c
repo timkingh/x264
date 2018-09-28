@@ -83,37 +83,41 @@ int x264_threadpool_init( x264_threadpool_t **p_pool, int threads,
     if( threads <= 0 )
         return -1;
 
-    if( x264_threading_init() < 0 )
-        return -1;
+	if (x264_threading_init() < 0)
+	{
+		return -1;
+	}
+	else
+	{
+		x264_threadpool_t *pool;
+		CHECKED_MALLOCZERO(pool, sizeof(x264_threadpool_t));
+		*p_pool = pool;
 
-    x264_threadpool_t *pool;
-    CHECKED_MALLOCZERO( pool, sizeof(x264_threadpool_t) );
-    *p_pool = pool;
+		pool->init_func = init_func;
+		pool->init_arg = init_arg;
+		pool->threads = threads;
 
-    pool->init_func = init_func;
-    pool->init_arg  = init_arg;
-    pool->threads   = threads;
+		CHECKED_MALLOC(pool->thread_handle, pool->threads * sizeof(x264_pthread_t));
 
-    CHECKED_MALLOC( pool->thread_handle, pool->threads * sizeof(x264_pthread_t) );
+		if (x264_sync_frame_list_init(&pool->uninit, pool->threads) ||
+			x264_sync_frame_list_init(&pool->run, pool->threads) ||
+			x264_sync_frame_list_init(&pool->done, pool->threads))
+			goto fail;
 
-    if( x264_sync_frame_list_init( &pool->uninit, pool->threads ) ||
-        x264_sync_frame_list_init( &pool->run, pool->threads ) ||
-        x264_sync_frame_list_init( &pool->done, pool->threads ) )
-        goto fail;
+		for (int i = 0; i < pool->threads; i++)
+		{
+			x264_threadpool_job_t *job;
+			CHECKED_MALLOC(job, sizeof(x264_threadpool_job_t));
+			x264_sync_frame_list_push(&pool->uninit, (void*)job);
+		}
+		for (int i = 0; i < pool->threads; i++)
+		if (x264_pthread_create(pool->thread_handle + i, NULL, (void*)threadpool_thread, pool))
+			goto fail;
 
-    for( int i = 0; i < pool->threads; i++ )
-    {
-       x264_threadpool_job_t *job;
-       CHECKED_MALLOC( job, sizeof(x264_threadpool_job_t) );
-       x264_sync_frame_list_push( &pool->uninit, (void*)job );
-    }
-    for( int i = 0; i < pool->threads; i++ )
-        if( x264_pthread_create( pool->thread_handle+i, NULL, (void*)threadpool_thread, pool ) )
-            goto fail;
-
-    return 0;
-fail:
-    return -1;
+		return 0;
+	fail:
+		return -1;
+	}
 }
 
 void x264_threadpool_run( x264_threadpool_t *pool, void *(*func)(void *), void *arg )

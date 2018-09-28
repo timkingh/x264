@@ -78,6 +78,7 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
     int colorspace = X264_CSP_NONE;
     int alt_colorspace = X264_CSP_NONE;
     int alt_bit_depth  = 8;
+	x264_cli_csp_t *csp;
     if( !h )
         return -1;
 
@@ -201,7 +202,7 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
     if( h->bit_depth > 8 )
         info->csp |= X264_CSP_HIGH_DEPTH;
 
-    const x264_cli_csp_t *csp = x264_cli_get_csp( info->csp );
+    csp = x264_cli_get_csp( info->csp );
 
     for( i = 0; i < csp->planes; i++ )
     {

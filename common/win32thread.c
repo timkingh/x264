@@ -215,18 +215,22 @@ int x264_pthread_cond_init( x264_pthread_cond_t *cond, const x264_pthread_condat
 int x264_pthread_cond_destroy( x264_pthread_cond_t *cond )
 {
     /* native condition variables do not destroy */
-    if( thread_control.cond_init )
-        return 0;
+	if (thread_control.cond_init)
+	{
+		return 0;
+	}
+	else
+	{
+		/* non native condition variables */
+		x264_win32_cond_t *win32_cond = cond->Ptr;
+		CloseHandle(win32_cond->semaphore);
+		CloseHandle(win32_cond->waiters_done);
+		x264_pthread_mutex_destroy(&win32_cond->mtx_broadcast);
+		x264_pthread_mutex_destroy(&win32_cond->mtx_waiter_count);
+		free(win32_cond);
 
-    /* non native condition variables */
-    x264_win32_cond_t *win32_cond = cond->Ptr;
-    CloseHandle( win32_cond->semaphore );
-    CloseHandle( win32_cond->waiters_done );
-    x264_pthread_mutex_destroy( &win32_cond->mtx_broadcast );
-    x264_pthread_mutex_destroy( &win32_cond->mtx_waiter_count );
-    free( win32_cond );
-
-    return 0;
+		return 0;
+	}
 }
 
 int x264_pthread_cond_broadcast( x264_pthread_cond_t *cond )
@@ -288,32 +292,36 @@ int x264_pthread_cond_signal( x264_pthread_cond_t *cond )
 
 int x264_pthread_cond_wait( x264_pthread_cond_t *cond, x264_pthread_mutex_t *mutex )
 {
-    if( thread_control.cond_wait )
-        return !thread_control.cond_wait( cond, mutex, INFINITE );
+	if (thread_control.cond_wait)
+	{
+		return !thread_control.cond_wait(cond, mutex, INFINITE);
+	}
+	else
+	{
+		/* non native condition variables */
+		x264_win32_cond_t *win32_cond = cond->Ptr;
 
-    /* non native condition variables */
-    x264_win32_cond_t *win32_cond = cond->Ptr;
+		x264_pthread_mutex_lock(&win32_cond->mtx_broadcast);
+		x264_pthread_mutex_lock(&win32_cond->mtx_waiter_count);
+		win32_cond->waiter_count++;
+		x264_pthread_mutex_unlock(&win32_cond->mtx_waiter_count);
+		x264_pthread_mutex_unlock(&win32_cond->mtx_broadcast);
 
-    x264_pthread_mutex_lock( &win32_cond->mtx_broadcast );
-    x264_pthread_mutex_lock( &win32_cond->mtx_waiter_count );
-    win32_cond->waiter_count++;
-    x264_pthread_mutex_unlock( &win32_cond->mtx_waiter_count );
-    x264_pthread_mutex_unlock( &win32_cond->mtx_broadcast );
+		// unlock the external mutex
+		x264_pthread_mutex_unlock(mutex);
+		WaitForSingleObject(win32_cond->semaphore, INFINITE);
 
-    // unlock the external mutex
-    x264_pthread_mutex_unlock( mutex );
-    WaitForSingleObject( win32_cond->semaphore, INFINITE );
+		x264_pthread_mutex_lock(&win32_cond->mtx_waiter_count);
+		win32_cond->waiter_count--;
+		int last_waiter = !win32_cond->waiter_count || !win32_cond->is_broadcast;
+		x264_pthread_mutex_unlock(&win32_cond->mtx_waiter_count);
 
-    x264_pthread_mutex_lock( &win32_cond->mtx_waiter_count );
-    win32_cond->waiter_count--;
-    int last_waiter = !win32_cond->waiter_count || !win32_cond->is_broadcast;
-    x264_pthread_mutex_unlock( &win32_cond->mtx_waiter_count );
+		if (last_waiter)
+			SetEvent(win32_cond->waiters_done);
 
-    if( last_waiter )
-        SetEvent( win32_cond->waiters_done );
-
-    // lock the external mutex
-    return x264_pthread_mutex_lock( mutex );
+		// lock the external mutex
+		return x264_pthread_mutex_lock(mutex);
+	}
 }
 
 int x264_win32_threading_init( void )

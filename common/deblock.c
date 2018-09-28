@@ -619,49 +619,53 @@ void x264_macroblock_deblock( x264_t *h )
     int intra_cur = IS_INTRA( h->mb.i_type );
     int qp = h->mb.i_qp;
     int qpc = h->mb.i_chroma_qp;
-    if( (h->mb.i_partition == D_16x16 && !h->mb.i_cbp_luma && !intra_cur) || qp <= qp_thresh )
-        return;
+	if ((h->mb.i_partition == D_16x16 && !h->mb.i_cbp_luma && !intra_cur) || qp <= qp_thresh)
+	{
+		return;
+	}
+	else
+	{
+		uint8_t(*bs)[8][4] = h->mb.cache.deblock_strength;
+		if (intra_cur)
+		{
+			M32(bs[0][1]) = 0x03030303;
+			M64(bs[0][2]) = 0x0303030303030303ULL;
+			M32(bs[1][1]) = 0x03030303;
+			M64(bs[1][2]) = 0x0303030303030303ULL;
+		}
+		else
+			h->loopf.deblock_strength(h->mb.cache.non_zero_count, h->mb.cache.ref, h->mb.cache.mv,
+			bs, 4 >> MB_INTERLACED, h->sh.i_type == SLICE_TYPE_B);
 
-    uint8_t (*bs)[8][4] = h->mb.cache.deblock_strength;
-    if( intra_cur )
-    {
-        M32( bs[0][1] ) = 0x03030303;
-        M64( bs[0][2] ) = 0x0303030303030303ULL;
-        M32( bs[1][1] ) = 0x03030303;
-        M64( bs[1][2] ) = 0x0303030303030303ULL;
-    }
-    else
-        h->loopf.deblock_strength( h->mb.cache.non_zero_count, h->mb.cache.ref, h->mb.cache.mv,
-                                   bs, 4 >> MB_INTERLACED, h->sh.i_type == SLICE_TYPE_B );
+		int transform_8x8 = h->mb.b_transform_8x8;
 
-    int transform_8x8 = h->mb.b_transform_8x8;
+#define FILTER( dir, edge )\
+		do\
+		{\
+		deblock_edge(h, h->mb.pic.p_fdec[0] + 4 * edge*(dir ? FDEC_STRIDE : 1), \
+		FDEC_STRIDE, bs[dir][edge], qp, a, b, 0, \
+		h->loopf.deblock_luma[dir]); \
+		if (CHROMA444)\
+		{\
+		deblock_edge(h, h->mb.pic.p_fdec[1] + 4 * edge*(dir ? FDEC_STRIDE : 1), \
+		FDEC_STRIDE, bs[dir][edge], qpc, a, b, 0, \
+		h->loopf.deblock_luma[dir]); \
+		deblock_edge(h, h->mb.pic.p_fdec[2] + 4 * edge*(dir ? FDEC_STRIDE : 1), \
+		FDEC_STRIDE, bs[dir][edge], qpc, a, b, 0, \
+		h->loopf.deblock_luma[dir]); \
+		}\
+		} while (0)
 
-    #define FILTER( dir, edge )\
-    do\
-    {\
-        deblock_edge( h, h->mb.pic.p_fdec[0] + 4*edge*(dir?FDEC_STRIDE:1),\
-                      FDEC_STRIDE, bs[dir][edge], qp, a, b, 0,\
-                      h->loopf.deblock_luma[dir] );\
-        if( CHROMA444 )\
-        {\
-            deblock_edge( h, h->mb.pic.p_fdec[1] + 4*edge*(dir?FDEC_STRIDE:1),\
-                          FDEC_STRIDE, bs[dir][edge], qpc, a, b, 0,\
-                          h->loopf.deblock_luma[dir] );\
-            deblock_edge( h, h->mb.pic.p_fdec[2] + 4*edge*(dir?FDEC_STRIDE:1),\
-                          FDEC_STRIDE, bs[dir][edge], qpc, a, b, 0,\
-                          h->loopf.deblock_luma[dir] );\
-        }\
-    } while( 0 )
+		if (!transform_8x8) FILTER(0, 1);
+		FILTER(0, 2);
+		if (!transform_8x8) FILTER(0, 3);
 
-    if( !transform_8x8 ) FILTER( 0, 1 );
-                         FILTER( 0, 2 );
-    if( !transform_8x8 ) FILTER( 0, 3 );
+		if (!transform_8x8) FILTER(1, 1);
+		FILTER(1, 2);
+		if (!transform_8x8) FILTER(1, 3);
 
-    if( !transform_8x8 ) FILTER( 1, 1 );
-                         FILTER( 1, 2 );
-    if( !transform_8x8 ) FILTER( 1, 3 );
-
-    #undef FILTER
+#undef FILTER
+	}
 }
 
 #if HAVE_MMX

@@ -121,23 +121,24 @@ static int detect_switchable_graphics( void );
  * still valid before reuse */
 static cl_program opencl_cache_load( x264_t *h, const char *dev_name, const char *dev_vendor, const char *driver_version )
 {
+	x264_opencl_function_t *ocl = h->opencl.ocl;
+	cl_program program = NULL;
+	uint8_t *binary = NULL;
+	size_t size;
+	uint8_t *ptr;
     /* try to load cached program binary */
     FILE *fp = x264_fopen( h->param.psz_clbin_file, "rb" );
     if( !fp )
         return NULL;
 
-    x264_opencl_function_t *ocl = h->opencl.ocl;
-    cl_program program = NULL;
-    uint8_t *binary = NULL;
-
     fseek( fp, 0, SEEK_END );
-    size_t size = ftell( fp );
+    size = ftell( fp );
     rewind( fp );
     CHECKED_MALLOC( binary, size );
 
     if( fread( binary, 1, size, fp ) != size )
         goto fail;
-    const uint8_t *ptr = (const uint8_t*)binary;
+    ptr = (uint8_t*)binary;
 
 #define CHECK_STRING( STR )\
     do {\

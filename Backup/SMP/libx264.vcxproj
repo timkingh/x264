@@ -226,7 +226,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>.\build</OutDir>
+    <OutDir>$(ProjectDir)..\..\..\msvc\</OutDir>
     <IntDir>$(SolutionDir)obj\$(Configuration)\$(Platform)\$(ProjectName)\</IntDir>
     <TargetName>libx264d</TargetName>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
@@ -240,7 +240,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IntDir>$(SolutionDir)obj\$(Configuration)\$(Platform)\$(ProjectName)\</IntDir>
     <TargetName>libx264d</TargetName>
-    <OutDir>.\build</OutDir>
+    <OutDir>$(ProjectDir)..\..\..\msvc\</OutDir>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_10b|x64'">
@@ -282,7 +282,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IntDir>$(SolutionDir)obj\$(Configuration)\$(Platform)\$(ProjectName)\</IntDir>
     <TargetName>libx264</TargetName>
-    <OutDir>.\build</OutDir>
+    <OutDir>$(ProjectDir)..\..\..\msvc\</OutDir>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_10b|x64'">
@@ -441,6 +441,7 @@ del /f /q $(OutDir)\licenses\x264.txt
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
+      <Optimization>Disabled</Optimization>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>__ICL;WIN32;HIGH_BIT_DEPTH=0;BIT_DEPTH=8;_WIN32_WINNT=0x0600;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\;..\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -450,7 +451,6 @@ del /f /q $(OutDir)\licenses\x264.txt
       <ProgramDataBaseFileName>$(OutDir)\lib\x64\$(TargetName).pdb</ProgramDataBaseFileName>
       <BasicRuntimeChecks>StackFrameRuntimeCheck</BasicRuntimeChecks>
       <MinimalRebuild>false</MinimalRebuild>
-      <Optimization>Custom</Optimization>
     </ClCompile>
     <Lib>
       <OutputFile>$(OutDir)\lib\x64\$(TargetName)$(TargetExt)</OutputFile>

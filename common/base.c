@@ -720,11 +720,12 @@ static int profile_string_to_int( const char *str )
 
 static int param_apply_profile( x264_param_t *param, const char *profile )
 {
+	const int qp_bd_offset = 6 * (param->i_bitdepth - 8);
+	int p;
     if( !profile )
         return 0;
 
-    const int qp_bd_offset = 6 * (param->i_bitdepth-8);
-    int p = profile_string_to_int( profile );
+    p = profile_string_to_int( profile );
     if( p < 0 )
     {
         x264_log_internal( X264_LOG_ERROR, "invalid profile: %s\n", profile );

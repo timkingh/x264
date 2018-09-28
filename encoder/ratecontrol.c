@@ -2136,50 +2136,54 @@ static int update_vbv( x264_t *h, int bits )
     if( rcc->last_satd >= h->mb.i_mb_count )
         update_predictor( &rct->pred[h->sh.i_type], qp2qscale( rcc->qpa_rc ), rcc->last_satd, bits );
 
-    if( !rcc->b_vbv )
-        return filler;
+	if (!rcc->b_vbv)
+	{
+		return filler;
+	}
+	else
+	{
+		uint64_t buffer_diff = (uint64_t)bits * h->sps->vui.i_time_scale;
+		rct->buffer_fill_final -= buffer_diff;
+		rct->buffer_fill_final_min -= buffer_diff;
 
-    uint64_t buffer_diff = (uint64_t)bits * h->sps->vui.i_time_scale;
-    rct->buffer_fill_final -= buffer_diff;
-    rct->buffer_fill_final_min -= buffer_diff;
+		if (rct->buffer_fill_final_min < 0)
+		{
+			double underflow = (double)rct->buffer_fill_final_min / h->sps->vui.i_time_scale;
+			if (rcc->rate_factor_max_increment && rcc->qpm >= rcc->qp_novbv + rcc->rate_factor_max_increment)
+				x264_log(h, X264_LOG_DEBUG, "VBV underflow due to CRF-max (frame %d, %.0f bits)\n", h->i_frame, underflow);
+			else
+				x264_log(h, X264_LOG_WARNING, "VBV underflow (frame %d, %.0f bits)\n", h->i_frame, underflow);
+			rct->buffer_fill_final =
+				rct->buffer_fill_final_min = 0;
+		}
 
-    if( rct->buffer_fill_final_min < 0 )
-    {
-        double underflow = (double)rct->buffer_fill_final_min / h->sps->vui.i_time_scale;
-        if( rcc->rate_factor_max_increment && rcc->qpm >= rcc->qp_novbv + rcc->rate_factor_max_increment )
-            x264_log( h, X264_LOG_DEBUG, "VBV underflow due to CRF-max (frame %d, %.0f bits)\n", h->i_frame, underflow );
-        else
-            x264_log( h, X264_LOG_WARNING, "VBV underflow (frame %d, %.0f bits)\n", h->i_frame, underflow );
-        rct->buffer_fill_final =
-        rct->buffer_fill_final_min = 0;
-    }
+		if (h->param.i_avcintra_class)
+			buffer_diff = buffer_size;
+		else
+			buffer_diff = (uint64_t)bitrate * h->sps->vui.i_num_units_in_tick * h->fenc->i_cpb_duration;
+		rct->buffer_fill_final += buffer_diff;
+		rct->buffer_fill_final_min += buffer_diff;
 
-    if( h->param.i_avcintra_class )
-        buffer_diff = buffer_size;
-    else
-        buffer_diff = (uint64_t)bitrate * h->sps->vui.i_num_units_in_tick * h->fenc->i_cpb_duration;
-    rct->buffer_fill_final += buffer_diff;
-    rct->buffer_fill_final_min += buffer_diff;
+		if (rct->buffer_fill_final > buffer_size)
+		{
+			if (h->param.rc.b_filler)
+			{
+				int64_t scale = (int64_t)h->sps->vui.i_time_scale * 8;
+				filler = (rct->buffer_fill_final - buffer_size + scale - 1) / scale;
+				bits = h->param.i_avcintra_class ? filler * 8 : X264_MAX((FILLER_OVERHEAD - h->param.b_annexb), filler) * 8;
+				buffer_diff = (uint64_t)bits * h->sps->vui.i_time_scale;
+				rct->buffer_fill_final -= buffer_diff;
+				rct->buffer_fill_final_min -= buffer_diff;
+			}
+			else
+			{
+				rct->buffer_fill_final = X264_MIN(rct->buffer_fill_final, buffer_size);
+				rct->buffer_fill_final_min = X264_MIN(rct->buffer_fill_final_min, buffer_size);
+			}
+		}
 
-    if( rct->buffer_fill_final > buffer_size )
-    {
-        if( h->param.rc.b_filler )
-        {
-            int64_t scale = (int64_t)h->sps->vui.i_time_scale * 8;
-            filler = (rct->buffer_fill_final - buffer_size + scale - 1) / scale;
-            bits = h->param.i_avcintra_class ? filler * 8 : X264_MAX( (FILLER_OVERHEAD - h->param.b_annexb), filler ) * 8;
-            buffer_diff = (uint64_t)bits * h->sps->vui.i_time_scale;
-            rct->buffer_fill_final -= buffer_diff;
-            rct->buffer_fill_final_min -= buffer_diff;
-        }
-        else
-        {
-            rct->buffer_fill_final = X264_MIN( rct->buffer_fill_final, buffer_size );
-            rct->buffer_fill_final_min = X264_MIN( rct->buffer_fill_final_min, buffer_size );
-        }
-    }
-
-    return filler;
+		return filler;
+	}
 }
 
 void x264_hrd_fullness( x264_t *h )
