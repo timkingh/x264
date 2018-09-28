@@ -453,7 +453,7 @@ del /f /q $(OutDir)\licenses\x264.txt
       <Optimization>Custom</Optimization>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)\lib\x64\$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)lib\x64\$(TargetName)$(TargetExt)</OutputFile>
       <TargetMachine>MachineX64</TargetMachine>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>libx264_10bd.lib;%(AdditionalDependencies)</AdditionalDependencies>
