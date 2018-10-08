@@ -44,7 +44,7 @@
 #include "output/output.h"
 #include "filters/filters.h"
 
-#define QP_MAX_SPEC (51+6*2)
+#define QP_MAX_SPEC (51/*+6*2*/)
 #define QP_MAX (QP_MAX_SPEC+18)
 
 #define FAIL_IF_ERROR( cond, ... ) FAIL_IF_ERR( cond, "x264", __VA_ARGS__ )

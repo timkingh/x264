@@ -54,8 +54,9 @@
 /****************************************************************************
  * Macros
  ****************************************************************************/
+
 #define X264_PCM_COST (FRAME_SIZE(256*BIT_DEPTH)+16)
-#define QP_BD_OFFSET (6*(BIT_DEPTH-8))
+#define QP_BD_OFFSET 0 //(6*(BIT_DEPTH-8))
 #define QP_MAX_SPEC (51+QP_BD_OFFSET)
 #define QP_MAX (QP_MAX_SPEC+18)
 #define PIXEL_MAX ((1 << BIT_DEPTH)-1)
@@ -90,7 +91,7 @@
 #define FRAME_SIZE(s) ((s)+2*CHROMA_SIZE(s))
 #define CHROMA444 (CHROMA_FORMAT == CHROMA_444)
 
-#if HIGH_BIT_DEPTH
+#if 0
     typedef uint16_t pixel;
     typedef uint64_t pixel4;
     typedef int32_t  dctcoef;
