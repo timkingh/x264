@@ -87,14 +87,24 @@ static NOINLINE pixel *weight_cost_init_luma( x264_t *h, x264_frame_t *fenc, x26
         int i_mb_xy = 0;
         pixel *p = dest;
 
+        FILE *fp = fopen(h->param.weightp_log, "a+");
+        if (fp == NULL)
+        {
+            x264_log(h, X264_LOG_ERROR, "fopen %s failed\n", h->param.weightp_log);
+        }
+        FPRINT(fp, "lowres_mv\n");
+
         for( int y = 0; y < i_lines; y += 8, p += i_stride*8 )
             for( int x = 0; x < i_width; x += 8, i_mb_xy++ )
             {
                 int mvx = fenc->lowres_mvs[0][ref0_distance][i_mb_xy][0];
                 int mvy = fenc->lowres_mvs[0][ref0_distance][i_mb_xy][1];
+                FPRINT(fp, "frame %d (%d, %d) ---> MV(%d, %d)\n", fenc->i_frame, x, y, mvx, mvy);
                 h->mc.mc_luma( p+x, i_stride, ref->lowres, i_stride,
                                mvx+(x<<2), mvy+(y<<2), 8, 8, x264_weight_none );
             }
+
+        FPCLOSE(fp);
         x264_emms();
         return dest;
     }

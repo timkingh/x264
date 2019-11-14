@@ -2086,8 +2086,10 @@ fail:
     {
         double fps = (double)i_frame_output * (double)1000000 /
                      (double)( i_end - i_start );
+        double elapsed_time = (double)(i_end - i_start) / 1000000;
 
-        fprintf( stderr, "encoded %d frames, %.2f fps, %.2f kb/s\n", i_frame_output, fps,
+        fprintf( stderr, "encoded %d frames(in %.2f seconds), %.2f fps, %.2f kb/s\n",
+                 i_frame_output, elapsed_time, fps,
                  (double) i_file * 8 / ( 1000 * duration ) );
     }
 

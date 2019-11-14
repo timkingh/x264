@@ -29,6 +29,9 @@
 
 #include "base.h"
 
+#define     FPRINT(fp, ...)  { if (fp) { fprintf(fp, ## __VA_ARGS__);} }
+#define     FPCLOSE(fp, ...) { if (fp) { fclose(fp); fp = NULL;} }
+
 /* Macros for templating function calls according to bit depth */
 #define x264_template(w) x264_glue3(x264, BIT_DEPTH, w)
 
