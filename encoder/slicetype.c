@@ -90,16 +90,16 @@ static NOINLINE pixel *weight_cost_init_luma( x264_t *h, x264_frame_t *fenc, x26
         FILE *fp = fopen(h->param.weightp_log, "a+");
         if (fp == NULL)
         {
-            x264_log(h, X264_LOG_ERROR, "fopen %s failed\n", h->param.weightp_log);
+            x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
         }
-        FPRINT(fp, "lowres_mv\n");
+        //FPRINT(fp, "lowres_mv\n");
 
         for( int y = 0; y < i_lines; y += 8, p += i_stride*8 )
             for( int x = 0; x < i_width; x += 8, i_mb_xy++ )
             {
                 int mvx = fenc->lowres_mvs[0][ref0_distance][i_mb_xy][0];
                 int mvy = fenc->lowres_mvs[0][ref0_distance][i_mb_xy][1];
-                FPRINT(fp, "frame %d (%d, %d) ---> MV(%d, %d)\n", fenc->i_frame, x, y, mvx, mvy);
+                //FPRINT(fp, "frame %d (%d, %d) ---> MV(%d, %d)\n", fenc->i_frame, x, y, mvx, mvy);
                 h->mc.mc_luma( p+x, i_stride, ref->lowres, i_stride,
                                mvx+(x<<2), mvy+(y<<2), 8, 8, x264_weight_none );
             }
@@ -328,6 +328,8 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         }
     }
 
+    int cost[3] = { 0 };
+
     /* Don't check chroma in lookahead, or if there wasn't a luma weight. */
     for( int plane = 0; plane < (CHROMA_FORMAT ? 3 : 1) && !( plane && ( !weights[0].weightfn || b_lookahead ) ); plane++ )
     {
@@ -338,6 +340,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         //early termination
         if( fabsf( ref_mean[plane] - fenc_mean[plane] ) < 0.5f && fabsf( 1.f - guess_scale[plane] ) < epsilon )
         {
+            cost[plane] = -1;
             SET_WEIGHT( weights[plane], 0, 1, 0, 0 );
             continue;
         }
@@ -391,7 +394,10 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         }
 
         if( !minscore )
+        {
+            cost[plane] = -2;
             continue;
+        }
 
         /* Picked somewhat arbitrarily */
         static const uint8_t weight_check_distance[][2] =
@@ -456,6 +462,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         /* 0.2% termination derived experimentally to avoid weird weights in frames that are mostly intra. */
         if( !found || (minscale == 1 << mindenom && minoff == 0) || (float)minscore / origscore > 0.998f )
         {
+            cost[plane] = -3;
             SET_WEIGHT( weights[plane], 0, 1, 0, 0 );
             continue;
         }
@@ -464,6 +471,22 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
 
         if( h->param.analyse.i_weighted_pred == X264_WEIGHTP_FAKE && weights[0].weightfn && !plane )
             fenc->f_weighted_cost_delta[i_delta_index] = (float)minscore / origscore;
+
+        cost[plane] = minscore;
+    }
+
+    {
+        FILE *fp = fopen(h->param.weightp_log, "a+");
+        if( fp == NULL )
+        {
+            x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
+        }
+        else
+        {
+            FPRINT(fp, "frame %d mincost %d minscale %d mindenom %d minoff %d\n",
+                        fenc->i_frame, cost[0], weights[0].i_scale, weights[0].i_denom, weights[0].i_offset);
+            FPCLOSE(fp);
+        }
     }
 
     /* Optimize and unify denominator */
@@ -862,8 +885,20 @@ static int slicetype_frame_cost( x264_t *h, x264_mb_analysis_t *a,
             if( h->param.analyse.i_weighted_pred && b == p1 )
             {
                 x264_emms();
+                FILE *fp = fopen(h->param.weightp_log, "a+");
+                if (fp == NULL)
+                {
+                    x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
+                }
+                else
+                {
+                    //FPRINT(fp, "frame %d %d slicetype_frame_cost calls weights analyse\n", h->i_frame, fenc->i_frame);
+                    FPCLOSE(fp);
+                }
+
                 x264_weights_analyse( h, fenc, frames[p0], 1 );
                 w = fenc->weight[0];
+
             }
             fenc->lowres_mvs[0][b-p0-1][0][0] = 0;
         }

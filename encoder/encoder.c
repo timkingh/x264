@@ -2030,11 +2030,11 @@ int x264_encoder_headers( x264_t *h, x264_nal_t **pp_nal, int *pi_nal )
         return -1;
 
     /* identify ourselves */
-    nal_start( h, NAL_SEI, NAL_PRIORITY_DISPOSABLE );
+   /* nal_start( h, NAL_SEI, NAL_PRIORITY_DISPOSABLE );
     if( x264_sei_version_write( h, &h->out.bs ) )
         return -1;
     if( nal_end( h ) )
-        return -1;
+        return -1;*/
 
     frame_size = encoder_encapsulate_nals( h, 0 );
     if( frame_size < 0 )
@@ -3640,7 +3640,7 @@ int     x264_encoder_encode( x264_t *h,
     if( h->fenc->b_keyframe )
     {
         /* Avid's decoder strictly wants two SEIs for AVC-Intra so we can't insert the x264 SEI */
-        if( h->param.b_repeat_headers && h->fenc->i_frame == 0 && !h->param.i_avcintra_class )
+        if(/* h->param.b_repeat_headers && h->fenc->i_frame == 0 && !h->param.i_avcintra_class*/0 )
         {
             /* identify ourself */
             nal_start( h, NAL_SEI, NAL_PRIORITY_DISPOSABLE );

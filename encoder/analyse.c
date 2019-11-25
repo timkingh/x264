@@ -2937,6 +2937,22 @@ intra_analysis:
 
         else if( analysis.i_mbrd >= 2 )
             intra_rd_refine( h, &analysis );
+
+		if( /*h->fenc->i_frame == 0*/0 )
+		{
+	        FILE *fp = fopen(h->param.weightp_log, "a+");
+	        if (fp == NULL)
+	        {
+	            x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
+	        }
+			else 
+			{
+				FPRINT(fp, "frame=%d,mb_x=%d,mb_y=%d,mb_xy=%d,mode=%d,cmode=%d\n", h->fenc->i_frame, 
+				           h->mb.i_mb_x, h->mb.i_mb_y, h->mb.i_mb_xy,
+				           analysis.i_predict16x16, h->mb.i_chroma_pred_mode);
+				FPCLOSE(fp);
+			}
+		}
     }
     else if( h->sh.i_type == SLICE_TYPE_P )
     {
