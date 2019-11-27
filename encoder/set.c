@@ -167,7 +167,7 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
     while( (1 << sps->i_log2_max_frame_num) <= max_frame_num )
         sps->i_log2_max_frame_num++;
 
-    sps->i_poc_type = param->i_bframe || param->b_interlaced || param->i_avcintra_class ? 0 : 2;
+    sps->i_poc_type = 0;//param->i_bframe || param->b_interlaced || param->i_avcintra_class ? 0 : 2;
     if( sps->i_poc_type == 0 )
     {
         int max_delta_poc = (param->i_bframe + 2) * (!!param->i_bframe_pyramid + 1) * 2;
@@ -176,7 +176,7 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
             sps->i_log2_max_poc_lsb++;
     }
 
-    sps->b_vui = 1;
+    sps->b_vui = 0;
 
     sps->b_gaps_in_frame_num_value_allowed = 0;
     sps->b_frame_mbs_only = !(param->b_interlaced || param->b_fake_interlaced);
