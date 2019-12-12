@@ -255,7 +255,7 @@ static NOINLINE unsigned int weight_cost_luma( x264_t *h, x264_frame_t *fenc, pi
             {
                 w->weightfn[8>>2]( buf, 8, &src[pixoff], i_stride, w, 8 );
                 int cmp = h->pixf.mbcmp[PIXEL_8x8]( buf, 8, &fenc_plane[pixoff], i_stride );
-                cost += cmp;//X264_MIN( cmp, fenc->i_intra_cost[i_mb] );
+                cost += X264_MIN( cmp, fenc->i_intra_cost[i_mb] );
             }
         cost += weight_slice_header_cost( h, w, 0 );
     }
@@ -264,7 +264,7 @@ static NOINLINE unsigned int weight_cost_luma( x264_t *h, x264_frame_t *fenc, pi
             for( int x = 0; x < i_width; x += 8, i_mb++, pixoff += 8 )
             {
                 int cmp = h->pixf.mbcmp[PIXEL_8x8]( &src[pixoff], i_stride, &fenc_plane[pixoff], i_stride );
-                cost += cmp;//X264_MIN( cmp, fenc->i_intra_cost[i_mb] );
+                cost += X264_MIN( cmp, fenc->i_intra_cost[i_mb] );
                 //printf("(%d, %d, %d), %d, %d\n", x, y, i_mb, cmp, fenc->i_intra_cost[i_mb]);
             }
     x264_emms();
@@ -450,8 +450,8 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                 lowres_context_init( h, &a );
                 slicetype_frame_cost( h, &a, &fenc, 0, 0, 0 );
             }
-            mcbuf = weight_cost_init_luma2( h, fenc, ref, h->mb.p_weight_buf[0] );
-            origscore = minscore = weight_cost_luma2( h, fenc, mcbuf, NULL );
+            mcbuf = weight_cost_init_luma( h, fenc, ref, h->mb.p_weight_buf[0] );
+            origscore = minscore = weight_cost_luma( h, fenc, mcbuf, NULL );
         }
         else
         {
@@ -524,7 +524,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                         s = weight_cost_chroma( h, fenc, mcbuf, &weights[plane] );
                 }
                 else
-                    s = weight_cost_luma2( h, fenc, mcbuf, &weights[plane] );
+                    s = weight_cost_luma( h, fenc, mcbuf, &weights[plane] );
                 COPY4_IF_LT( minscore, s, minscale, cur_scale, minoff, i_off, found, 1 );
 
 				if( !plane )
