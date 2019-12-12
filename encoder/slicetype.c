@@ -112,6 +112,44 @@ static NOINLINE pixel *weight_cost_init_luma( x264_t *h, x264_frame_t *fenc, x26
     return ref->lowres[0];
 }
 
+static NOINLINE pixel *weight_cost_init_luma2( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, pixel *dest )
+{
+    int ref0_distance = fenc->i_frame - ref->i_frame - 1;
+    /* Note: this will never run during lookahead as weights_analyse is only called if no
+     * motion search has been done. */
+    if( fenc->lowres_mvs[0][ref0_distance][0][0] != 0x7FFF )
+    {
+        int i_stride = fenc->i_stride_lowres;
+        int i_lines = fenc->i_lines_lowres;
+        int i_width = fenc->i_width_lowres;
+        int i_mb_xy = 0;
+        pixel *p = dest;
+
+        FILE *fp = fopen(h->param.weightp_log, "a+");
+        if (fp == NULL)
+        {
+            x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
+        }
+        //FPRINT(fp, "lowres_mv\n");
+
+        for( int y = 0; y < i_lines; y += 8, p += i_stride*8 )
+            for( int x = 0; x < i_width; x += 8, i_mb_xy++ )
+            {
+                int mvx = fenc->lowres_mvs[0][ref0_distance][i_mb_xy][0];
+                int mvy = fenc->lowres_mvs[0][ref0_distance][i_mb_xy][1];
+                //FPRINT(fp, "frame %d (%d, %d) ---> MV(%d, %d)\n", fenc->i_frame, x, y, mvx, mvy);
+                h->mc.mc_luma( p+x, i_stride, ref->lowres, i_stride,
+                               mvx+(x<<2), mvy+(y<<2), 8, 8, x264_weight_none );
+            }
+
+        FPCLOSE(fp);
+        x264_emms();
+        return dest;
+    }
+    x264_emms();
+    return ref->plane[0];
+}
+
 /* How data is organized for 4:2:0/4:2:2 chroma weightp:
  * [U: ref] [U: fenc]
  * [V: ref] [V: fenc]
@@ -226,6 +264,40 @@ static NOINLINE unsigned int weight_cost_luma( x264_t *h, x264_frame_t *fenc, pi
             for( int x = 0; x < i_width; x += 8, i_mb++, pixoff += 8 )
             {
                 int cmp = h->pixf.mbcmp[PIXEL_8x8]( &src[pixoff], i_stride, &fenc_plane[pixoff], i_stride );
+                cost += cmp;//X264_MIN( cmp, fenc->i_intra_cost[i_mb] );
+                //printf("(%d, %d, %d), %d, %d\n", x, y, i_mb, cmp, fenc->i_intra_cost[i_mb]);
+            }
+    x264_emms();
+    return cost;
+}
+
+static NOINLINE unsigned int weight_cost_luma2( x264_t *h, x264_frame_t *fenc, pixel *src, x264_weight_t *w )
+{
+    unsigned int cost = 0;
+    int i_stride = fenc->i_stride[0];
+    int i_lines = fenc->i_lines[0];
+    int i_width = fenc->i_width[0];
+    pixel *fenc_plane = fenc->plane[0];
+    ALIGNED_ARRAY_16( pixel, buf,[16*16] );
+    int pixoff = 0;
+    int i_mb = 0;
+
+    if( w )
+    {
+        for( int y = 0; y < i_lines; y += 16, pixoff = y*i_stride )
+            for( int x = 0; x < i_width; x += 16, i_mb++, pixoff += 16)
+            {
+                w->weightfn[16>>2]( buf, 16, &src[pixoff], i_stride, w, 16 );
+                int cmp = h->pixf.mbcmp[PIXEL_16x16]( buf, 16, &fenc_plane[pixoff], i_stride );
+                cost += cmp;//X264_MIN( cmp, fenc->i_intra_cost[i_mb] );
+            }
+        cost += weight_slice_header_cost( h, w, 0 );
+    }
+    else
+        for( int y = 0; y < i_lines; y += 16, pixoff = y*i_stride )
+            for( int x = 0; x < i_width; x += 16, i_mb++, pixoff += 16 )
+            {
+                int cmp = h->pixf.mbcmp[PIXEL_16x16]( &src[pixoff], i_stride, &fenc_plane[pixoff], i_stride );
                 cost += cmp;//X264_MIN( cmp, fenc->i_intra_cost[i_mb] );
                 //printf("(%d, %d, %d), %d, %d\n", x, y, i_mb, cmp, fenc->i_intra_cost[i_mb]);
             }
@@ -378,8 +450,8 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                 lowres_context_init( h, &a );
                 slicetype_frame_cost( h, &a, &fenc, 0, 0, 0 );
             }
-            mcbuf = weight_cost_init_luma( h, fenc, ref, h->mb.p_weight_buf[0] );
-            origscore = minscore = weight_cost_luma( h, fenc, mcbuf, NULL );
+            mcbuf = weight_cost_init_luma2( h, fenc, ref, h->mb.p_weight_buf[0] );
+            origscore = minscore = weight_cost_luma2( h, fenc, mcbuf, NULL );
         }
         else
         {
@@ -452,7 +524,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                         s = weight_cost_chroma( h, fenc, mcbuf, &weights[plane] );
                 }
                 else
-                    s = weight_cost_luma( h, fenc, mcbuf, &weights[plane] );
+                    s = weight_cost_luma2( h, fenc, mcbuf, &weights[plane] );
                 COPY4_IF_LT( minscore, s, minscale, cur_scale, minoff, i_off, found, 1 );
 
 				if( !plane )
