@@ -402,11 +402,6 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
     }
 
     int cost[3] = { 0 };
-	FILE *fp = fopen(h->param.weightp_log, "a+");
-	if (fp == NULL)
-	{
-		x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
-	}
 
     /* Don't check chroma in lookahead, or if there wasn't a luma weight. */
     for( int plane = 0; plane < (CHROMA_FORMAT ? 3 : 1) && !( plane && ( !weights[0].weightfn || b_lookahead ) ); plane++ )
@@ -484,60 +479,93 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
             {0,1},{0,1},{0,1},{1,1},
             {1,1},{2,1},{2,1},{4,2}
         };
-        int scale_dist =  b_lookahead ? 0 : weight_check_distance[h->param.analyse.i_subpel_refine][0];
-        int offset_dist = b_lookahead ? 0 : weight_check_distance[h->param.analyse.i_subpel_refine][1];
-        int start_scale  = x264_clip3( minscale - scale_dist, 0, 127 );
-        int end_scale    = x264_clip3( minscale + scale_dist, 0, 127 );
-        for( int i_scale = start_scale; i_scale <= end_scale; i_scale++ )
+
+		int best_denom = mindenom;
+		int start_denom, end_denom;
+		if (!plane) 
+		{
+			start_denom = 0;
+			end_denom = 7;
+		}
+		else
+		{
+			/* chroma: U and V shared the same denom */
+			start_denom = end_denom = mindenom;
+		}
+		
+        for (mindenom = start_denom; mindenom <= end_denom; mindenom++) 
         {
-            int cur_scale = i_scale;
-            int cur_offset = fenc_mean[plane] - ref_mean[plane] * cur_scale / (1 << mindenom) + 0.5f * b_lookahead;
-			if( !plane )
+	        int scale_dist =  b_lookahead ? 0 : weight_check_distance[h->param.analyse.i_subpel_refine][0];
+	        int offset_dist = b_lookahead ? 0 : weight_check_distance[h->param.analyse.i_subpel_refine][1];
+	        int start_scale  = 0;//x264_clip3( minscale - scale_dist, 0, 127 );
+	        int end_scale    = 127;//x264_clip3( minscale + scale_dist, 0, 127 );
+			if (!plane) 
 			{
-				//fprintf(fp, "init cur_scale %d mindenom %d cur_offset %d\n", cur_scale, mindenom, cur_offset);
+				start_scale = 0;
+				end_scale = 127;
 			}
-            if( cur_offset < - 128 || cur_offset > 127 )
-            {
-                /* Rescale considering the constraints on cur_offset. We do it in this order
-                 * because scale has a much wider range than offset (because of denom), so
-                 * it should almost never need to be clamped. */
-                cur_offset = x264_clip3( cur_offset, -128, 127 );
-                cur_scale = (1 << mindenom) * (fenc_mean[plane] - cur_offset) / ref_mean[plane] + 0.5f;
-                cur_scale = x264_clip3( cur_scale, 0, 127 );
-                if( !plane )
-				{
-					//fprintf(fp, "adjust cur_scale %d mindenom %d cur_offset %d\n", cur_scale, mindenom, cur_offset);
-				}
-            }			
+			else 
+			{	        
+				start_scale  = x264_clip3( minscale - scale_dist, 0, 127 );
+	        	end_scale    = x264_clip3( minscale + scale_dist, 0, 127 );
+			}
+	        
+	        for( int i_scale = start_scale; i_scale <= end_scale; i_scale++ )
+	        {
+	            int cur_scale = i_scale;
+	            int cur_offset = fenc_mean[plane] - ref_mean[plane] * cur_scale / (1 << mindenom) + 0.5f * b_lookahead;
 
-            int start_offset = x264_clip3( cur_offset - offset_dist, -128, 127 );
-            int end_offset   = x264_clip3( cur_offset + offset_dist, -128, 127 );
-            for( int i_off = start_offset; i_off <= end_offset; i_off++ )
-            {
-                SET_WEIGHT( weights[plane], 1, cur_scale, mindenom, i_off );
-                unsigned int s;
-                if( plane )
-                {
-                    if( CHROMA444 )
-                        s = weight_cost_chroma444( h, fenc, mcbuf, &weights[plane], plane );
-                    else
-                        s = weight_cost_chroma( h, fenc, mcbuf, &weights[plane] );
-                }
-                else
-                    s = weight_cost_luma( h, fenc, mcbuf, &weights[plane] );
-                COPY4_IF_LT( minscore, s, minscale, cur_scale, minoff, i_off, found, 1 );
+	            if( cur_offset < - 128 || cur_offset > 127 )
+	            {
+	                /* Rescale considering the constraints on cur_offset. We do it in this order
+	                 * because scale has a much wider range than offset (because of denom), so
+	                 * it should almost never need to be clamped. */
+	                cur_offset = x264_clip3( cur_offset, -128, 127 );
+	                cur_scale = (1 << mindenom) * (fenc_mean[plane] - cur_offset) / ref_mean[plane] + 0.5f;
+	                cur_scale = x264_clip3( cur_scale, 0, 127 );
+	            }			
 
-				if( !plane )
-				{
-					//fprintf(fp, "cur_scale %d mindenom %d i_off %d score %d minscore %d\n", cur_scale, mindenom, i_off, s, minscore);
-				}
-                // Don't check any more offsets if the previous one had a lower cost than the current one
-                if( minoff == start_offset && i_off != start_offset )
-                    break;
+	            int start_offset = -128;//x264_clip3( cur_offset - offset_dist, -128, 127 );
+	            int end_offset   = 0;//x264_clip3( cur_offset + offset_dist, -128, 127 );
+	            if (!plane)
+	            {
+	            	start_offset = -128;
+	            	end_offset = 127;
+	            }
+	            else 
+	            {
+					start_offset = x264_clip3( cur_offset - offset_dist, -128, 127 );
+					end_offset	 = x264_clip3( cur_offset + offset_dist, -128, 127 );
+	            }
+	            
+	            for( int i_off = start_offset; i_off <= end_offset; i_off++ )
+	            {
+	                SET_WEIGHT( weights[plane], 1, cur_scale, mindenom, i_off );
+	                unsigned int s;
+	                if( plane )
+	                {
+	                    if( CHROMA444 )
+	                        s = weight_cost_chroma444( h, fenc, mcbuf, &weights[plane], plane );
+	                    else
+	                        s = weight_cost_chroma( h, fenc, mcbuf, &weights[plane] );
+	                }
+	                else
+	                    s = weight_cost_luma( h, fenc, mcbuf, &weights[plane] );
+	                if (s < minscore)
+	                {
+	                	best_denom = mindenom;
+	                }
+	                COPY4_IF_LT( minscore, s, minscale, cur_scale, minoff, i_off, found, 1 );
+	
+	                // Don't check any more offsets if the previous one had a lower cost than the current one
+	                if( minoff == start_offset && i_off != start_offset )
+	                    break;
+	            }
             }
         }
         x264_emms();
 
+		mindenom = best_denom;
         /* Use a smaller denominator if possible */
         if( !plane )
         {
@@ -564,9 +592,8 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
 
         cost[plane] = minscore;
     }
-	FPCLOSE(fp);
 
-	if( 0 )
+	if( 1 )
     {
         FILE *fp = fopen(h->param.weightp_log, "a+");
         if( fp == NULL )
