@@ -451,7 +451,7 @@ del /f /q $(OutDir)\licenses\x264.txt
       <DisableSpecificWarnings>4996;4244;4267;4003;4018;4305;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <ProgramDataBaseFileName>$(OutDir)\lib\x64\$(TargetName).pdb</ProgramDataBaseFileName>
       <BasicRuntimeChecks>StackFrameRuntimeCheck</BasicRuntimeChecks>
-      <MinimalRebuild>false</MinimalRebuild>
+      <MinimalRebuild>true</MinimalRebuild>
       <Optimization>Custom</Optimization>
       <PreprocessToFile>false</PreprocessToFile>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>

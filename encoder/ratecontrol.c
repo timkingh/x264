@@ -221,6 +221,57 @@ static inline double qscale2bits( ratecontrol_entry_t *rce, double qscale )
            + rce->misc_bits;
 }
 
+static pixel rk_calc_plane_ave(pixel *src, uint32_t width, uint32_t height, uint32_t stride, uint8_t chroma)
+{
+	uint64_t sum = 0;
+	uint32_t offset = 0;
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			offset = chroma ? (j * 2) : (j);
+			sum += src[i * stride + offset];
+		}
+	}
+
+	return (pixel)(sum / (height * width));
+}
+
+static uint64_t rk_calc_plane_madi(pixel *src, uint32_t width, uint32_t height, uint32_t stride, pixel ave, uint8_t chroma)
+{
+	uint64_t madi = 0;
+	uint32_t offset = 0;
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			offset = chroma ? (j * 2) : (j);
+			madi += abs(src[i * stride + offset] - ave);
+		}
+	}
+
+	return madi;
+}
+
+static void rk_calc_frame_madi(x264_t *h, x264_frame_t *frame)
+{
+	int32_t width, height, stride;
+	pixel *src;
+	pixel ave;
+
+	for (int i = 0; i < 2; i++) {
+		stride = frame->i_stride[i];
+		src = frame->plane[i]; /* YUV420sp */
+		width = frame->i_width[i];
+		height = frame->i_lines[i];
+
+		ave = rk_calc_plane_ave(src, width, height, stride, i);
+		frame->i_frame_madi[i] = rk_calc_plane_madi(src, width, height, stride, ave, i);
+
+		if (i == 1) {
+			src = frame->plane[i] + 1; /* V */
+			ave = rk_calc_plane_ave(src, width, height, stride, i);
+			frame->i_frame_madi[i + 1] = rk_calc_plane_madi(src, width, height, stride, ave, i);
+		}
+	}
+}
+
 static ALWAYS_INLINE uint32_t ac_energy_var( uint64_t sum_ssd, int shift, x264_frame_t *frame, int i, int b_store )
 {
     uint32_t sum = sum_ssd;
@@ -308,6 +359,8 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
         frame->i_pixel_sum[i] = 0;
         frame->i_pixel_ssd[i] = 0;
     }
+	
+	rk_calc_frame_madi(h, frame);
 
     /* Degenerate cases */
     if( h->param.rc.i_aq_mode == X264_AQ_NONE || h->param.rc.f_aq_strength == 0 )

@@ -373,6 +373,7 @@ typedef struct x264_param_t
     int         i_log_level;
     int         b_full_recon;   /* fully reconstruct frames, even when not necessary for encoding.  Implied by psz_dump_yuv */
     char        *psz_dump_yuv;  /* filename (in UTF-8) for reconstructed frames */
+    char        *weightp_log;
 
     /* Encoder analyser parameters */
     struct
