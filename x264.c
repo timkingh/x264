@@ -1144,6 +1144,7 @@ static struct option long_options[] =
     { "log-level",   required_argument, NULL, OPT_LOG_LEVEL },
     { "no-progress",       no_argument, NULL, OPT_NOPROGRESS },
     { "dump-yuv",    required_argument, NULL, 0 },
+	{ "weightp-param",	 required_argument, NULL, 0 },
     { "sps-id",      required_argument, NULL, 0 },
     { "aud",               no_argument, NULL, 0 },
     { "nr",          required_argument, NULL, 0 },

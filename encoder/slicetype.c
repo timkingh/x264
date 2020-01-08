@@ -42,6 +42,16 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
 #include "slicetype-cl.h"
 #endif
 
+typedef struct {
+	uint32_t frames;
+	uint32_t plane;
+	int32_t scale;
+	int32_t denom;
+	int32_t offset;
+} WeightParam;
+
+static WeightParam g_wp[512 * 3] = { 0 };
+
 static void lowres_context_init( x264_t *h, x264_mb_analysis_t *a )
 {
     a->i_qp = X264_LOOKAHEAD_QP;
@@ -365,6 +375,39 @@ static NOINLINE unsigned int weight_cost_chroma444( x264_t *h, x264_frame_t *fen
     return cost;
 }
 
+static void fetch_weight_param(x264_t *h, x264_frame_t *fenc)
+{
+	static int fetch_flg = 0;
+	if (fetch_flg == 0) {
+		fetch_flg = 1;
+
+		int32_t cnt = 0, idx = 0;
+		char lines[512] = { 0 };
+        FILE *fp = fopen(h->param.weightp_log, "r");
+        if( fp == NULL ) {
+            x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
+        } else {
+			x264_log(h, X264_LOG_DEBUG, "fopen %s success!\n", h->param.weightp_log);
+
+			while (1) {
+				WeightParam *p = &g_wp[idx++];				
+				if (fgets(lines, 512, fp) != NULL) {
+					cnt = sscanf(lines, "frame %d plane %d minscale %d mindenom %d minoff %d",
+										&p->frames, &p->plane, &p->scale, &p->denom, &p->offset);
+					if (cnt != 5) {
+						x264_log(h, X264_LOG_ERROR, "sscanf failed! cnt %d idx %d\n", cnt, idx);
+					}
+				} else {
+					x264_log(h, X264_LOG_ERROR, "fgets failed! idx %d\n", idx);
+					break;
+				}
+			}
+		}
+
+		FPCLOSE(fp);
+	}
+}
+
 void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int b_lookahead )
 {
     int i_delta_index = fenc->i_frame - ref->i_frame - 1;
@@ -384,6 +427,13 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         float fenc_var = fenc->i_pixel_ssd[plane] + zero_bias; /* why not "double" type?  for sqrtf ??  */
         float ref_var  =  ref->i_pixel_ssd[plane] + zero_bias;
         guess_scale[plane] = sqrtf( fenc_var / ref_var ); /* float       sqrtf( float arg ); */
+		if (1) {
+			zero_bias = !ref->i_frame_madi[plane];
+			fenc_var = fenc->i_frame_madi[plane] + zero_bias;
+			ref_var = ref->i_frame_madi[plane] + zero_bias;
+			guess_scale[plane] = fenc_var / ref_var;
+		}
+		
         fenc_mean[plane] = (float)(fenc->i_pixel_sum[plane] + zero_bias) / (fenc->i_lines[!!plane] * fenc->i_width[!!plane]) / (1 << (BIT_DEPTH - 8));
         ref_mean[plane]  = (float)( ref->i_pixel_sum[plane] + zero_bias) / (fenc->i_lines[!!plane] * fenc->i_width[!!plane]) / (1 << (BIT_DEPTH - 8));
     }
@@ -553,6 +603,8 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         cost[plane] = minscore;
     }
 
+	fetch_weight_param(h, fenc);
+
 	if( 0 )
     {
         FILE *fp = fopen(h->param.weightp_log, "a+");
@@ -563,9 +615,9 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         else
         {
         	for (int i = 0; i < 3; i++)
-            	fprintf(fp, "frame %d %s mincost %d minscale %d mindenom %d minoff %d\n",
-                        fenc->i_frame, i == 0 ? "Luma" : "Chroma", 
-                        cost[i], weights[i].i_scale, weights[i].i_denom, weights[i].i_offset);
+            	fprintf(fp, "frame %d plane %d minscale %d mindenom %d minoff %d\n",
+                        fenc->i_frame, i, //i == 0 ? "Luma" : "Chroma", 
+                        /*cost[i],*/ weights[i].i_scale, weights[i].i_denom, weights[i].i_offset);
 
             FPCLOSE(fp);
         }

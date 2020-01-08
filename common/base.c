@@ -1170,7 +1170,9 @@ static int param_parse( x264_param_t *p, const char *name, const char *value )
     OPT("log")
         p->i_log_level = atoi(value);
     OPT("dump-yuv")
-        p->psz_dump_yuv = strdup(value);
+        p->psz_dump_yuv = strdup(value);    
+	OPT("weightp-param")
+        p->weightp_log = strdup(value);
     OPT2("analyse", "partitions")
     {
         p->analyse.inter = 0;
