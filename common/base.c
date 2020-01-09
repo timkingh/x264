@@ -377,7 +377,7 @@ static void param_default( x264_param_t *param )
     param->pf_log = x264_log_default;
     param->p_log_private = NULL;
     param->i_log_level = X264_LOG_INFO;
-    param->weightp_log = "D:\\Source Code\\x264_github_si\\log\\weightp_log.txt";
+    param->weightp_log = NULL;
 
     /* */
     param->analyse.intra = X264_ANALYSE_I4x4 | X264_ANALYSE_I8x8;

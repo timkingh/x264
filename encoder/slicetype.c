@@ -97,13 +97,6 @@ static NOINLINE pixel *weight_cost_init_luma( x264_t *h, x264_frame_t *fenc, x26
         int i_mb_xy = 0;
         pixel *p = dest;
 
-        FILE *fp = fopen(h->param.weightp_log, "a+");
-        if (fp == NULL)
-        {
-            x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
-        }
-        //FPRINT(fp, "lowres_mv\n");
-
         for( int y = 0; y < i_lines; y += 8, p += i_stride*8 )
             for( int x = 0; x < i_width; x += 8, i_mb_xy++ )
             {
@@ -114,7 +107,6 @@ static NOINLINE pixel *weight_cost_init_luma( x264_t *h, x264_frame_t *fenc, x26
                                mvx+(x<<2), mvy+(y<<2), 8, 8, x264_weight_none );
             }
 
-        FPCLOSE(fp);
         x264_emms();
         return dest;
     }
@@ -427,7 +419,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         float fenc_var = fenc->i_pixel_ssd[plane] + zero_bias; /* why not "double" type?  for sqrtf ??  */
         float ref_var  =  ref->i_pixel_ssd[plane] + zero_bias;
         guess_scale[plane] = sqrtf( fenc_var / ref_var ); /* float       sqrtf( float arg ); */
-		if (1) {
+		if (0) {
 			zero_bias = !ref->i_frame_madi[plane];
 			fenc_var = fenc->i_frame_madi[plane] + zero_bias;
 			ref_var = ref->i_frame_madi[plane] + zero_bias;
@@ -452,6 +444,8 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
     }
 
     int cost[3] = { 0 };
+	if (h->param.weightp_log != NULL)
+		fetch_weight_param(h, fenc);
 
     /* Don't check chroma in lookahead, or if there wasn't a luma weight. */
     for( int plane = 0; plane < (CHROMA_FORMAT ? 3 : 1) && !( plane && ( !weights[0].weightfn || b_lookahead ) ); plane++ )
@@ -576,6 +570,25 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         }
         x264_emms();
 
+		if (!plane && h->param.weightp_log != NULL) {		
+			WeightParam *p = NULL;
+			int32_t idx = 0;
+			for (idx = 0; idx < 512 * 3; idx++) {
+				p = &g_wp[idx];
+				if ((p->frames == fenc->i_frame) && (p->plane == 0)) {			
+					x264_log(h, X264_LOG_ERROR, "frame %d enable histogram weightp\n", fenc->i_frame);
+					minscale = p->scale;
+					mindenom = p->denom;
+					minoff = p->offset;
+					break;
+				} 
+			}
+		
+			if (idx >= 512 * 3) {
+				x264_log(h, X264_LOG_ERROR, "can not find param of frame %d\n", fenc->i_frame);
+			}
+		}
+
         /* Use a smaller denominator if possible */
         if( !plane )
         {
@@ -602,8 +615,6 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
 
         cost[plane] = minscore;
     }
-
-	fetch_weight_param(h, fenc);
 
 	if( 0 )
     {
@@ -1019,17 +1030,6 @@ static int slicetype_frame_cost( x264_t *h, x264_mb_analysis_t *a,
             if( h->param.analyse.i_weighted_pred && b == p1 )
             {
                 x264_emms();
-                FILE *fp = fopen(h->param.weightp_log, "a+");
-                if (fp == NULL)
-                {
-                    x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);
-                }
-                else
-                {
-                    //FPRINT(fp, "frame %d %d slicetype_frame_cost calls weights analyse\n", h->i_frame, fenc->i_frame);
-                    FPCLOSE(fp);
-                }
-
                 x264_weights_analyse( h, fenc, frames[p0], 1 );
                 w = fenc->weight[0];
 
