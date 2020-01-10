@@ -1636,6 +1636,7 @@ generic_option:
     FAIL_IF_ERROR( cli_output.open_file( output_filename, &opt->hout, &output_opt ), "could not open output file `%s'\n", output_filename );
 
     input_filename = argv[optind++];
+    param->output_filename = output_filename;
     video_info_t info = {0};
     char demuxername[5];
 

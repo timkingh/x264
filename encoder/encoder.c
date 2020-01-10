@@ -4396,6 +4396,7 @@ void    x264_encoder_close  ( x264_t *h )
                       SUM3( h->stat.f_psnr_average ) / duration,
                       calc_psnr( SUM3( h->stat.f_ssd_global ), duration * i_yuv_size ),
                       f_bitrate );
+			printf("GLOBAL PSNR-INFO %s: %6.3f\n", h->param.output_filename, calc_psnr( SUM3( h->stat.f_ssd_global ), duration * i_yuv_size ));
         }
         else
             x264_log( h, X264_LOG_INFO, "kb/s:%.2f\n", f_bitrate );
