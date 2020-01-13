@@ -444,7 +444,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
     }
 
     int cost[3] = { 0 };
-	if (h->param.weightp_log != NULL)
+	if (/*h->param.weightp_log != NULL*/0)
 		fetch_weight_param(h, fenc);
 
     /* Don't check chroma in lookahead, or if there wasn't a luma weight. */
@@ -570,7 +570,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         }
         x264_emms();
 
-		if (!plane && h->param.weightp_log != NULL) {		
+		if (/*!plane && h->param.weightp_log != NULL*/0) {		
 			WeightParam *p = NULL;
 			int32_t idx = 0;
 			for (idx = 0; idx < 512 * 3; idx++) {
@@ -616,7 +616,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         cost[plane] = minscore;
     }
 
-	if( 0 )
+	if( 1 )
     {
         FILE *fp = fopen(h->param.weightp_log, "a+");
         if( fp == NULL )
@@ -626,9 +626,9 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         else
         {
         	for (int i = 0; i < 3; i++)
-            	fprintf(fp, "frame %d plane %d minscale %d mindenom %d minoff %d\n",
+            	fprintf(fp, "frame %d plane %d minscale %d mindenom %d minoff %d cost %d\n",
                         fenc->i_frame, i, //i == 0 ? "Luma" : "Chroma", 
-                        /*cost[i],*/ weights[i].i_scale, weights[i].i_denom, weights[i].i_offset);
+                        /*cost[i],*/ weights[i].i_scale, weights[i].i_denom, weights[i].i_offset, cost[i]);
 
             FPCLOSE(fp);
         }
