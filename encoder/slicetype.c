@@ -400,6 +400,39 @@ static void fetch_weight_param(x264_t *h, x264_frame_t *fenc)
 	}
 }
 
+static void frame_dump2( x264_t *h )
+{
+    FILE *f = x264_fopen( h->param.weightp_log, "r+b" );
+    if( !f )
+        return;
+
+	x264_frame_t *ref = h->fref[0][0];
+
+    /* Write the frame in display order */
+    int frame_size = FRAME_SIZE( h->param.i_height * h->param.i_width * sizeof(pixel) );
+    if( !fseek( f, (int64_t)ref->i_frame * frame_size, SEEK_SET ) )
+    {
+        for( int p = 0; p < (CHROMA444 ? 3 : 1); p++ )
+            for( int y = 0; y < h->param.i_height; y++ )
+                fwrite( &ref->plane[p][y*ref->i_stride[p]], sizeof(pixel), h->param.i_width, f );
+        if( CHROMA_FORMAT == CHROMA_420 || CHROMA_FORMAT == CHROMA_422 )
+        {
+            int cw = h->param.i_width>>1;
+            int ch = h->param.i_height>>CHROMA_V_SHIFT;
+            pixel *planeu = x264_malloc( 2 * (cw*ch*sizeof(pixel) + 32) );
+            if( planeu )
+            {
+                pixel *planev = planeu + cw*ch + 32/sizeof(pixel);
+                h->mc.plane_copy_deinterleave( planeu, cw, planev, cw, ref->plane[1], ref->i_stride[1], cw, ch );
+                fwrite( planeu, 1, cw*ch*sizeof(pixel), f );
+                fwrite( planev, 1, cw*ch*sizeof(pixel), f );
+                x264_free( planeu );
+            }
+        }
+    }
+    fclose( f );
+}
+
 void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int b_lookahead )
 {
     int i_delta_index = fenc->i_frame - ref->i_frame - 1;
@@ -446,6 +479,10 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
     int cost[3] = { 0 };
 	if (/*h->param.weightp_log != NULL*/0)
 		fetch_weight_param(h, fenc);
+
+	if (!b_lookahead) {
+		frame_dump2(h);
+	}
 
     /* Don't check chroma in lookahead, or if there wasn't a luma weight. */
     for( int plane = 0; plane < (CHROMA_FORMAT ? 3 : 1) && !( plane && ( !weights[0].weightfn || b_lookahead ) ); plane++ )
@@ -616,7 +653,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
         cost[plane] = minscore;
     }
 
-	if( 1 )
+	if( 0 )
     {
         FILE *fp = fopen(h->param.weightp_log, "a+");
         if( fp == NULL )
