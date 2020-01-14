@@ -402,11 +402,10 @@ static void fetch_weight_param(x264_t *h, x264_frame_t *fenc)
 
 static void frame_dump2( x264_t *h )
 {
-    FILE *f = x264_fopen( h->param.weightp_log, "r+b" );
+	x264_frame_t *ref = h->fdec;
+    FILE *f = x264_fopen( h->param.weightp_log, "a+b" );
     if( !f )
         return;
-
-	x264_frame_t *ref = h->fref[0][0];
 
     /* Write the frame in display order */
     int frame_size = FRAME_SIZE( h->param.i_height * h->param.i_width * sizeof(pixel) );
