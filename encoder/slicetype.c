@@ -190,6 +190,40 @@ static NOINLINE void weight_cost_init_chroma( x264_t *h, x264_frame_t *fenc, x26
     x264_emms();
 }
 
+static NOINLINE void weight_cost_init_chroma2( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, pixel *dstu, pixel *dstv )
+{
+    int ref0_distance = fenc->i_frame - ref->i_frame - 1;
+    int i_stride = fenc->i_stride[1];
+    int i_offset = i_stride / 2;
+    int i_lines = fenc->i_lines[1];
+    int i_width = fenc->i_width[1];
+    int v_shift = CHROMA_V_SHIFT;
+    int cw = 8*h->mb.i_mb_width;
+    int ch = 16*h->mb.i_mb_height >> v_shift;
+    int height = 16 >> v_shift;
+	x264_frame_t *ref2 = h->fdec;
+
+    if( fenc->lowres_mvs[0][ref0_distance][0][0] != 0x7FFF )
+    {
+        x264_frame_expand_border_chroma( h, ref, 1 );
+        for( int y = 0, mb_xy = 0, pel_offset_y = 0; y < i_lines; y += height, pel_offset_y = y*i_stride )
+            for( int x = 0, pel_offset_x = 0; x < i_width; x += 8, mb_xy++, pel_offset_x += 8 )
+            {
+                pixel *pixu = dstu + pel_offset_y + pel_offset_x;
+                pixel *pixv = dstv + pel_offset_y + pel_offset_x;
+                pixel *src1 =  ref->plane[1] + pel_offset_y + pel_offset_x*2; /* NV12/NV16 */
+                int mvx = fenc->lowres_mvs[0][ref0_distance][mb_xy][0];
+                int mvy = fenc->lowres_mvs[0][ref0_distance][mb_xy][1];
+                h->mc.mc_chroma( pixu, pixv, i_stride, src1, i_stride, mvx, 2*mvy>>v_shift, 8, height );
+            }
+    }
+    else
+        h->mc.plane_copy_deinterleave( dstu, i_stride, dstv, i_stride, ref2->plane[1], i_stride, cw, ch );
+    h->mc.plane_copy_deinterleave( dstu+i_offset, i_stride, dstv+i_offset, i_stride, fenc->plane[1], i_stride, cw, ch );
+    x264_emms();
+}
+
+
 static NOINLINE pixel *weight_cost_init_chroma444( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, pixel *dst, int p )
 {
     int ref0_distance = fenc->i_frame - ref->i_frame - 1;
@@ -336,6 +370,41 @@ static NOINLINE unsigned int weight_cost_chroma( x264_t *h, x264_frame_t *fenc, 
         for( int y = 0; y < i_lines; y += height, pixoff = y*i_stride )
             for( int x = 0; x < i_width; x += 8, pixoff += 8 )
                 cost += h->pixf.asd8( &ref[pixoff], i_stride, &src[pixoff], i_stride, height );
+    x264_emms();
+    return cost;
+}
+
+static NOINLINE unsigned int weight_cost_chroma2( x264_t *h, x264_frame_t *fenc, pixel *ref, x264_weight_t *w )
+{
+    unsigned int cost = 0;
+    int i_stride = fenc->i_stride[1];
+    int i_lines = fenc->i_lines[1];
+    int i_width = fenc->i_width[1];
+    pixel *src = ref + (i_stride >> 1);
+    ALIGNED_ARRAY_16( pixel, buf, [8*16] );
+    int pixoff = 0;
+    int height = 16 >> CHROMA_V_SHIFT;
+    if( w )
+    {
+        for( int y = 0; y < i_lines; y += 8, pixoff = y*i_stride )
+            for( int x = 0; x < i_width; x += 8, pixoff += 8 )
+            {
+                w->weightfn[8>>2]( buf, 8, &ref[pixoff], i_stride, w, height );
+                /* The naive and seemingly sensible algorithm is to use mbcmp as in luma.
+                 * But testing shows that for chroma the DC coefficient is by far the most
+                 * important part of the coding cost.  Thus a more useful chroma weight is
+                 * obtained by comparing each block's DC coefficient instead of the actual
+                 * pixels. */
+                //cost += h->pixf.asd8( buf, 8, &src[pixoff], i_stride, height );
+                cost += h->pixf.mbcmp[PIXEL_8x8]( buf, 8, &src[pixoff], i_stride );
+            }
+        cost += weight_slice_header_cost( h, w, 1 );
+    }
+    else
+        for( int y = 0; y < i_lines; y += 8, pixoff = y*i_stride )
+            for( int x = 0; x < i_width; x += 8, pixoff += 8 )
+                //cost += h->pixf.asd8( &ref[pixoff], i_stride, &src[pixoff], i_stride, height );
+				cost += h->pixf.mbcmp[PIXEL_8x8]( &ref[pixoff], 8, &src[pixoff], i_stride );
     x264_emms();
     return cost;
 }
@@ -540,9 +609,9 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                 pixel *dstu = h->mb.p_weight_buf[0];
                 pixel *dstv = h->mb.p_weight_buf[0]+fenc->i_stride[1]*fenc->i_lines[1];
                 if( !chroma_initted++ )
-                    weight_cost_init_chroma( h, fenc, ref, dstu, dstv );
+                    weight_cost_init_chroma2( h, fenc, ref, dstu, dstv );
                 mcbuf = plane == 1 ? dstu : dstv;
-                origscore = minscore = weight_cost_chroma( h, fenc, mcbuf, NULL );
+                origscore = minscore = weight_cost_chroma2( h, fenc, mcbuf, NULL );
             }
         }
 
@@ -592,7 +661,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                     if( CHROMA444 )
                         s = weight_cost_chroma444( h, fenc, mcbuf, &weights[plane], plane );
                     else
-                        s = weight_cost_chroma( h, fenc, mcbuf, &weights[plane] );
+                        s = weight_cost_chroma2( h, fenc, mcbuf, &weights[plane] );
                 }
                 else
                     s = weight_cost_luma2( h, fenc, mcbuf, &weights[plane] );
