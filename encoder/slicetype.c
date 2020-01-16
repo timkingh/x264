@@ -386,7 +386,7 @@ static NOINLINE unsigned int weight_cost_chroma2( x264_t *h, x264_frame_t *fenc,
     int height = 16 >> CHROMA_V_SHIFT;
     if( w )
     {
-        for( int y = 0; y < i_lines; y += 8, pixoff = y*i_stride )
+        for( int y = 0; y < i_lines; y += height, pixoff = y*i_stride )
             for( int x = 0; x < i_width; x += 8, pixoff += 8 )
             {
                 w->weightfn[8>>2]( buf, 8, &ref[pixoff], i_stride, w, height );
@@ -395,16 +395,16 @@ static NOINLINE unsigned int weight_cost_chroma2( x264_t *h, x264_frame_t *fenc,
                  * important part of the coding cost.  Thus a more useful chroma weight is
                  * obtained by comparing each block's DC coefficient instead of the actual
                  * pixels. */
-                //cost += h->pixf.asd8( buf, 8, &src[pixoff], i_stride, height );
-                cost += h->pixf.mbcmp[PIXEL_8x8]( buf, 8, &src[pixoff], i_stride );
+                cost += h->pixf.asd8( buf, 8, &src[pixoff], i_stride, height );
+                //cost += h->pixf.mbcmp[PIXEL_8x8]( buf, 8, &src[pixoff], i_stride );
             }
         cost += weight_slice_header_cost( h, w, 1 );
     }
     else
-        for( int y = 0; y < i_lines; y += 8, pixoff = y*i_stride )
+        for( int y = 0; y < i_lines; y += height, pixoff = y*i_stride )
             for( int x = 0; x < i_width; x += 8, pixoff += 8 )
-                //cost += h->pixf.asd8( &ref[pixoff], i_stride, &src[pixoff], i_stride, height );
-				cost += h->pixf.mbcmp[PIXEL_8x8]( &ref[pixoff], 8, &src[pixoff], i_stride );
+                cost += h->pixf.asd8( &ref[pixoff], i_stride, &src[pixoff], i_stride, height );
+				//cost += h->pixf.mbcmp[PIXEL_8x8]( &ref[pixoff], 8, &src[pixoff], i_stride );
     x264_emms();
     return cost;
 }
@@ -549,7 +549,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
 		fetch_weight_param(h, fenc);
 
 	if (!b_lookahead) {
-		frame_dump2(h);
+		//frame_dump2(h);
 	}
 
     /* Don't check chroma in lookahead, or if there wasn't a luma weight. */
