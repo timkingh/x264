@@ -609,9 +609,9 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                 pixel *dstu = h->mb.p_weight_buf[0];
                 pixel *dstv = h->mb.p_weight_buf[0]+fenc->i_stride[1]*fenc->i_lines[1];
                 if( !chroma_initted++ )
-                    weight_cost_init_chroma2( h, fenc, ref, dstu, dstv );
+                    weight_cost_init_chroma( h, fenc, ref, dstu, dstv );
                 mcbuf = plane == 1 ? dstu : dstv;
-                origscore = minscore = weight_cost_chroma2( h, fenc, mcbuf, NULL );
+                origscore = minscore = weight_cost_chroma( h, fenc, mcbuf, NULL );
             }
         }
 
@@ -661,7 +661,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                     if( CHROMA444 )
                         s = weight_cost_chroma444( h, fenc, mcbuf, &weights[plane], plane );
                     else
-                        s = weight_cost_chroma2( h, fenc, mcbuf, &weights[plane] );
+                        s = weight_cost_chroma( h, fenc, mcbuf, &weights[plane] );
                 }
                 else
                     s = weight_cost_luma2( h, fenc, mcbuf, &weights[plane] );
