@@ -594,8 +594,8 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                 lowres_context_init( h, &a );
                 slicetype_frame_cost( h, &a, &fenc, 0, 0, 0 );
             }
-            mcbuf = weight_cost_init_luma2( h, fenc, ref, h->mb.p_weight_buf[0] );
-            origscore = minscore = weight_cost_luma2( h, fenc, mcbuf, NULL );
+            mcbuf = weight_cost_init_luma( h, fenc, ref, h->mb.p_weight_buf[0] );
+            origscore = minscore = weight_cost_luma( h, fenc, mcbuf, NULL );
         }
         else
         {
@@ -664,7 +664,7 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                         s = weight_cost_chroma( h, fenc, mcbuf, &weights[plane] );
                 }
                 else
-                    s = weight_cost_luma2( h, fenc, mcbuf, &weights[plane] );
+                    s = weight_cost_luma( h, fenc, mcbuf, &weights[plane] );
         
                 COPY4_IF_LT( minscore, s, minscale, cur_scale, minoff, i_off, found, 1 );
 
