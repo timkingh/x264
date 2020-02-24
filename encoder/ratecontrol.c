@@ -360,7 +360,7 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
         frame->i_pixel_ssd[i] = 0;
     }
 	
-	rk_calc_frame_madi(h, frame);
+	//rk_calc_frame_madi(h, frame);
 
     /* Degenerate cases */
     if( h->param.rc.i_aq_mode == X264_AQ_NONE || h->param.rc.f_aq_strength == 0 )
