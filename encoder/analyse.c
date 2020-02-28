@@ -2938,9 +2938,9 @@ intra_analysis:
         else if( analysis.i_mbrd >= 2 )
             intra_rd_refine( h, &analysis );
 
-		if( /*h->fenc->i_frame == 0*/0 )
+		if( h->fenc->i_frame == 0 )
 		{
-	        FILE *fp = fopen(h->param.weightp_log, "a+");
+	        FILE *fp = fopen(/*h->param.weightp_log*/"mode_info.txt", "a+");
 	        if (fp == NULL)
 	        {
 	            x264_log(h, X264_LOG_ERROR, "%s fopen %s failed\n", __FUNCTION__, h->param.weightp_log);

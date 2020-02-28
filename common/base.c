@@ -339,7 +339,7 @@ static void param_default( x264_param_t *param )
     param->b_interlaced = 0;
     param->b_constrained_intra = 0;
 
-    param->b_deblocking_filter = 1;
+    param->b_deblocking_filter = 0;
     param->i_deblocking_filter_alphac0 = 0;
     param->i_deblocking_filter_beta = 0;
 
@@ -380,7 +380,7 @@ static void param_default( x264_param_t *param )
     param->weightp_log = NULL;
 
     /* */
-    param->analyse.intra = X264_ANALYSE_I4x4 | X264_ANALYSE_I8x8;
+    param->analyse.intra = 0;//X264_ANALYSE_I4x4 | X264_ANALYSE_I8x8;
     param->analyse.inter = X264_ANALYSE_I4x4 | X264_ANALYSE_I8x8
                          | X264_ANALYSE_PSUB16x16 | X264_ANALYSE_BSUB16x16;
     param->analyse.i_direct_mv_pred = X264_DIRECT_PRED_SPATIAL;
