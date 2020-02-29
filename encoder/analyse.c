@@ -258,7 +258,7 @@ static void mb_analyse_init_qp( x264_t *h, x264_mb_analysis_t *a, int qp )
     a->i_lambda = x264_lambda_tab[qp];
     a->i_lambda2 = x264_lambda2_tab[qp];
 
-    h->mb.b_trellis = h->param.analyse.i_trellis > 1 && a->i_mbrd;
+    h->mb.b_trellis = 0;//h->param.analyse.i_trellis > 1 && a->i_mbrd;
     if( h->param.analyse.i_trellis )
     {
         h->mb.i_trellis_lambda2[0][0] = x264_trellis_lambda2_tab[0][qp];

@@ -343,7 +343,7 @@ static void param_default( x264_param_t *param )
     param->i_deblocking_filter_alphac0 = 0;
     param->i_deblocking_filter_beta = 0;
 
-    param->b_cabac = 1;
+    param->b_cabac = 0;
     param->i_cabac_init_idc = 0;
 
     param->rc.i_rc_method = X264_RC_CRF;
@@ -400,7 +400,7 @@ static void param_default( x264_param_t *param )
     param->analyse.i_weighted_pred = X264_WEIGHTP_SMART;
     param->analyse.b_dct_decimate = 1;
     param->analyse.b_transform_8x8 = 1;
-    param->analyse.i_trellis = 1;
+    param->analyse.i_trellis = 0;
     param->analyse.i_luma_deadzone[0] = 21;
     param->analyse.i_luma_deadzone[1] = 11;
     param->analyse.b_psnr = 0;
