@@ -3725,7 +3725,7 @@ skip_analysis:
     if( analysis.i_mbrd == 3 && !IS_SKIP(h->mb.i_type) )
         mb_analyse_qp_rd( h, &analysis );
 
-    h->mb.b_trellis = h->param.analyse.i_trellis;
+    h->mb.b_trellis = 0;//h->param.analyse.i_trellis;
     h->mb.b_noise_reduction = h->mb.b_noise_reduction || (!!h->param.analyse.i_noise_reduction && !IS_INTRA( h->mb.i_type ));
 
     if( !IS_SKIP(h->mb.i_type) && h->mb.i_psy_trellis && h->param.analyse.i_trellis == 1 )
